@@ -1,0 +1,28 @@
+name: Quality
+
+on:
+  push:
+    branches: [ai/product-completion/miniblog]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: node --test tests/*.test.mjs
+      - run: yarn install --frozen-lockfile --non-interactive
+      - run: yarn audit --groups dependencies --level high
+      - run: yarn lint
+      - name: Build public web app without external CMS access
+        env:
+          SANITY_OFFLINE_BUILD: 'true'
+        run: yarn build
