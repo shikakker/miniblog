@@ -1,14 +1,19 @@
 {
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "packageManager": "yarn@1.22.22",
   "scripts": {
     "dev": "next dev",
-    "prebuild": "echo 'Building Sanity to public/studio' && cd studio && yarn && npx @sanity/cli build ../public/studio -y && echo 'Done'",
     "build": "next build",
+    "build:studio": "yarn --cwd studio build",
     "nextbuild": "next build",
     "start": "next start",
-    "sanity": "cd studio && sanity start",
+    "sanity": "yarn --cwd studio start",
     "export": "cd studio && sanity dataset export production ../.sanity-template/data/production.tar.gz",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^1.6.2",
