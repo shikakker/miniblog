@@ -1,5 +1,7 @@
 name: Security migration
 
+# The migration is write-capable, but package/lock changes are committed only after
+# contracts, high/critical audit, lint, and the provider-free production build pass.
 on:
   push:
     branches: [ai/product-completion/miniblog]
