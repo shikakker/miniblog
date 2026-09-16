@@ -20,7 +20,19 @@ jobs:
           cache: yarn
       - run: node --test tests/*.test.mjs
       - run: yarn install --frozen-lockfile --non-interactive
-      - run: yarn audit --groups dependencies --level high
+      - name: Audit production dependencies (block high/critical)
+        run: |
+          yarn audit --groups dependencies --json > audit.json || true
+          node <<'NODE'
+          const fs = require('fs')
+          const lines = fs.readFileSync('audit.json', 'utf8').trim().split('\n').filter(Boolean)
+          const entries = lines.map(line => JSON.parse(line))
+          const summary = entries.find(entry => entry.type === 'auditSummary')
+          if (!summary) throw new Error('Yarn audit did not produce an auditSummary')
+          const v = summary.data.vulnerabilities || {}
+          console.log(`production audit: low=${v.low || 0} moderate=${v.moderate || 0} high=${v.high || 0} critical=${v.critical || 0}`)
+          if ((v.high || 0) > 0 || (v.critical || 0) > 0) process.exit(1)
+          NODE
       - run: yarn lint
       - name: Build public web app without external CMS access
         env:
