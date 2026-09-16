@@ -15,7 +15,7 @@ Product family: Sanity-backed Next.js blog plus a legacy Sanity Studio v2 author
 | T05 | DONE | Added explicit CI-only `SANITY_OFFLINE_BUILD=true`; real deployments remain provider-backed by default. |
 | T06 | DONE | Added regression contracts for Studio decoupling, runtime security and offline-build boundaries. |
 | T07 | DONE | Migrated public runtime from Next 12.1.6 to Next 15.5.24 / React 18.2 and verified the synchronized Yarn lockfile. |
-| T08 | DONE | Guarded migration passed contracts, high/critical production audit, zero-warning lint and provider-free production build before committing package + lock state. |
+| T08 | DONE | Guarded migration and permanent frozen Quality both pass contracts, high/critical production audit, zero-warning lint and provider-free production build. |
 | T09 | BLOCKED | Exact final Vercel preview/browser verification. BLOCKED ONLY BY current Vercel delivery capacity/status for the completion branch. |
 | T10 | DEFERRED WITH REASON | Sanity Studio v2 modernization is a separate authoring-surface migration and does not block the public web release lane. |
 
@@ -53,21 +53,21 @@ Product family: Sanity-backed Next.js blog plus a legacy Sanity Studio v2 author
 
 Historical Vercel deployment `dpl_8HNx4BnS4R3vc86ZPWo9XwG2KK5f` failed before `next build` because public release invoked an incompatible modern Sanity CLI against Studio v2. That coupling is removed.
 
-A test-first runtime contract then reproduced two remaining P0 security failures on Quality run `35097881394`: the public app still used `next@^12.1.6`, and the legacy Sanity `eventsource` chain was not explicitly pinned. The first guarded migration proved the dependency update and all 5 contracts, but exposed a Yarn v1 audit semantics problem: only six moderate findings were present, yet the command exited non-zero. The workflow was corrected to parse the audit summary and block only high/critical findings.
+A test-first runtime contract reproduced two remaining P0 security failures on Quality run `35097881394`: the public app still used `next@^12.1.6`, and the legacy Sanity `eventsource` chain was not explicitly pinned. The first guarded migration proved the dependency update and all 5 contracts, but exposed a Yarn v1 audit semantics problem: only six moderate findings were present, yet the command exited non-zero. The workflow was corrected to parse the audit summary and block only high/critical findings.
 
-Guarded migration run `35098680471`, job `104802304120`, then completed the full gate:
+Guarded migration run `35098680471`, job `104802304120`, completed the full gate and committed verified dependency state `877c14019663c8ec2b5c28f5e82a14c4d96b40e2`:
 
-- frozen install of the prior lockfile — PASS;
-- Next 15.5.24 / React 18.2 dependency migration — PASS;
+- prior frozen install — PASS;
+- Next 15.5.24 / React 18.2 migration — PASS;
 - runtime/build contracts — PASS 5/5;
-- production audit — PASS at the high/critical gate;
+- production high/critical audit — PASS;
 - zero-warning ESLint — PASS;
 - `SANITY_OFFLINE_BUILD=true` production build — PASS;
 - verified `package.json` + `yarn.lock` commit — PASS.
 
-Verified dependency commit: `877c14019663c8ec2b5c28f5e82a14c4d96b40e2` (`fix: upgrade miniblog public runtime security boundary`). The final manifest pins Node `22.x`, Yarn `1.22.22`, Next `15.5.24`, React/ReactDOM `18.2.0`, `eventsource` `1.1.2`, and patched Next/PostCSS/nanoid resolutions.
+Permanent read-only Quality then independently verified the committed frozen dependency graph on checkpoint `fb74d93d147c150bc51e6eab1ef74fd4cc6b4d61`: run `35099074892`, job `104803617678`, PASS for contracts → frozen install → high/critical audit → zero-warning lint → provider-free production build.
 
-The workflow-authored verified lock commit does not automatically create a normal push workflow run, so this documentation-only checkpoint intentionally triggers the read-only permanent Quality workflow against the committed frozen lockfile. No application/runtime behavior is changed by this checkpoint.
+Final manifest boundary: Node `22.x`, Yarn `1.22.22`, Next `15.5.24`, React/ReactDOM `18.2.0`, `eventsource` `1.1.2`, plus patched Next/PostCSS/nanoid resolutions.
 
 ## Remaining release gate
 
