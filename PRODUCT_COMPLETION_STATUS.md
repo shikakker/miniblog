@@ -1,6 +1,7 @@
 # Product Completion Status — miniblog
 
-Canonical branch: `ai/product-completion/miniblog`
+Canonical branch: `ai/product-completion/miniblog`  
+Draft PR: #3  
 Product family: Sanity-backed Next.js blog plus a legacy Sanity Studio v2 authoring surface.
 
 ## T01–T10 core tasks
@@ -8,15 +9,15 @@ Product family: Sanity-backed Next.js blog plus a legacy Sanity Studio v2 author
 | ID | Status | Task / verification |
 | --- | --- | --- |
 | T01 | DONE | Inspected repository, web app, Studio package and Vercel build history. |
-| T02 | DONE | Reproduced the production build blocker: root `prebuild` ran `npx @sanity/cli@latest` against Studio v2. |
+| T02 | DONE | Reproduced the production build blocker: root `prebuild` ran moving `@sanity/cli@latest` against Studio v2. |
 | T03 | DONE | Decoupled the public Next.js build from the legacy Studio build. |
 | T04 | DONE | Pinned Node 22 and Yarn 1.22.22 for the deployable web app. |
-| T05 | DONE | Added an explicit CI-only `SANITY_OFFLINE_BUILD=true` web-build boundary; real deployments remain provider-backed by default. |
-| T06 | DONE | Added regression contracts for Studio decoupling/runtime/offline-build boundaries. |
-| T07 | IN PROGRESS | Permanent Quality gate added for contracts, frozen install, production audit, lint and provider-free build. |
-| T08 | BLOCKED | Exact completion-branch GitHub runner evidence is not yet available. |
-| T09 | BLOCKED | Exact Vercel preview is rejected before build by the account deployment-rate limit. |
-| T10 | DEFERRED WITH REASON | Sanity Studio v2 modernization is a separate authoring-surface migration and is not required to make the public web build deployable. |
+| T05 | DONE | Added explicit CI-only `SANITY_OFFLINE_BUILD=true`; real deployments remain provider-backed by default. |
+| T06 | DONE | Added regression contracts for Studio decoupling, runtime security and offline-build boundaries. |
+| T07 | DONE | Migrated public runtime from Next 12.1.6 to Next 15.5.24 / React 18.2 and verified the synchronized Yarn lockfile. |
+| T08 | DONE | Guarded migration passed contracts, high/critical production audit, zero-warning lint and provider-free production build before committing package + lock state. |
+| T09 | BLOCKED | Exact final Vercel preview/browser verification. BLOCKED ONLY BY current Vercel delivery capacity/status for the completion branch. |
+| T10 | DEFERRED WITH REASON | Sanity Studio v2 modernization is a separate authoring-surface migration and does not block the public web release lane. |
 
 ## I01–I10 improvements
 
@@ -27,11 +28,11 @@ Product family: Sanity-backed Next.js blog plus a legacy Sanity Studio v2 author
 | I03 | DONE | Real web runtime still fails closed when Sanity project configuration is missing. |
 | I04 | DONE | CI-only offline client returns deterministic empty CMS results and never becomes the production default. |
 | I05 | DONE | Added `rel="noopener noreferrer"` to Portable Text external links. |
-| I06 | IN PROGRESS | Production dependency audit is part of Quality CI; runtime migration depends on actual audit evidence. |
-| I07 | IN PROGRESS | Web lint/build compatibility on Node 22 awaits an executing runner. |
-| I08 | BLOCKED | Hosted Sanity-backed smoke requires an accepted Vercel preview and the configured project environment. |
-| I09 | BLOCKED | Responsive/accessibility browser QA waits on hosted preview. |
-| I10 | DEFERRED WITH REASON | No framework rewrite before the current public web lane is verified independently of Studio. |
+| I06 | DONE | Production audit blocks high/critical findings while moderate-only Yarn v1 findings do not create a false failure. |
+| I07 | DONE | Next 15.5.24, React 18.2, ESLint 8.57.1 and `eslint-config-next` 15.5.24 verified on Node 22. |
+| I08 | DONE | Legacy `eventsource` chain is explicitly pinned to 1.1.2 while `next-sanity` 0.x remains. |
+| I09 | BLOCKED | Hosted Sanity-backed responsive/accessibility/browser smoke requires an exact current preview. |
+| I10 | DEFERRED WITH REASON | Legacy Sanity Studio v2 dependency modernization is isolated from the deployable public web surface. |
 
 ## F01–F10 product features
 
@@ -46,16 +47,32 @@ Product family: Sanity-backed Next.js blog plus a legacy Sanity Studio v2 author
 | F07 | DEFERRED WITH REASON | No artificial dashboard/CRUD beyond the existing Sanity Studio authoring model. |
 | F08 | DEFERRED WITH REASON | No AI feature added without validated publishing value. |
 | F09 | DEFERRED WITH REASON | No commerce feature added to a blog template. |
-| F10 | DEFERRED WITH REASON | No production promotion is performed automatically. |
+| F10 | DEFERRED WITH REASON | Production promotion requires explicit approval after exact hosted verification. |
 
-## Evidence
+## Verification evidence
 
-Historical Vercel deployment `dpl_8HNx4BnS4R3vc86ZPWo9XwG2KK5f` failed before `next build`: root `prebuild` downloaded `@sanity/cli@8.0.2`, detected `sanity.json`, and aborted because Sanity Studio < v3 is unsupported. The public web release path therefore depended on an unrelated legacy authoring tool.
+Historical Vercel deployment `dpl_8HNx4BnS4R3vc86ZPWo9XwG2KK5f` failed before `next build` because public release invoked an incompatible modern Sanity CLI against Studio v2. That coupling is removed.
 
-The completion branch removes that coupling: `build` is only `next build`; Studio has the explicit `build:studio` command using the committed Studio package. An explicit `SANITY_OFFLINE_BUILD=true` path exists only for CI compile/build verification so provider availability is not confused with source/build correctness. Without that flag, missing Sanity configuration still fails closed.
+A test-first runtime contract then reproduced two remaining P0 security failures on Quality run `35097881394`: the public app still used `next@^12.1.6`, and the legacy Sanity `eventsource` chain was not explicitly pinned. The first guarded migration proved the dependency update and all 5 contracts, but exposed a Yarn v1 audit semantics problem: only six moderate findings were present, yet the command exited non-zero. The workflow was corrected to parse the audit summary and block only high/critical findings.
 
-Exact completion-branch Vercel status currently says `Deployment rate limited — retry in 24 hours.`, so no preview build/browser PASS is inferred. GitHub Quality was added but no executing run was available at the time of this checkpoint.
+Guarded migration run `35098680471`, job `104802304120`, then completed the full gate:
 
-BLOCKED ONLY BY: GitHub runner execution for install/audit/lint/build evidence; Vercel deployment capacity for exact preview/browser QA; and intended Sanity project configuration for provider-backed hosted smoke. Legacy Studio v2 modernization is tracked separately rather than blocking the public web deploy path.
+- frozen install of the prior lockfile — PASS;
+- Next 15.5.24 / React 18.2 dependency migration — PASS;
+- runtime/build contracts — PASS 5/5;
+- production audit — PASS at the high/critical gate;
+- zero-warning ESLint — PASS;
+- `SANITY_OFFLINE_BUILD=true` production build — PASS;
+- verified `package.json` + `yarn.lock` commit — PASS.
+
+Verified dependency commit: `877c14019663c8ec2b5c28f5e82a14c4d96b40e2` (`fix: upgrade miniblog public runtime security boundary`). The final manifest pins Node `22.x`, Yarn `1.22.22`, Next `15.5.24`, React/ReactDOM `18.2.0`, `eventsource` `1.1.2`, and patched Next/PostCSS/nanoid resolutions.
+
+The workflow-authored verified lock commit does not automatically create a normal push workflow run, so this documentation-only checkpoint intentionally triggers the read-only permanent Quality workflow against the committed frozen lockfile. No application/runtime behavior is changed by this checkpoint.
+
+## Remaining release gate
+
+**BLOCKED ONLY BY:** exact-final Vercel preview/browser delivery and intended Sanity project configuration for a real provider-backed smoke. The public source/build/security lane is verified; Studio v2 modernization is tracked separately.
 
 Status: **PARTIAL**.
+
+No merge, production promotion, provider write, credential mutation, billing action or destructive operation has been performed automatically.
