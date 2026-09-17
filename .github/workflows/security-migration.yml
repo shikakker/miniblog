@@ -1,0 +1,75 @@
+name: Security migration
+
+# The migration is write-capable, but package/lock changes are committed only after
+# contracts, high/critical audit, lint, and the provider-free production build pass.
+on:
+  push:
+    branches: [ai/product-completion/miniblog]
+    paths:
+      - .github/workflows/security-migration.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai/product-completion/miniblog
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile --non-interactive
+      - name: Upgrade patched public runtime
+        run: |
+          yarn add --exact next@15.5.24 react@18.2.0 react-dom@18.2.0
+          yarn add --dev --exact eslint@8.57.1 eslint-config-next@15.5.24
+          node <<'NODE'
+          const fs = require('fs')
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+          pkg.engines = { node: '22.x' }
+          pkg.packageManager = 'yarn@1.22.22'
+          pkg.resolutions = {
+            ...(pkg.resolutions || {}),
+            eventsource: '1.1.2',
+            'next/postcss': '8.5.23',
+            'next/postcss/nanoid': '3.3.18'
+          }
+          pkg.scripts = {
+            ...pkg.scripts,
+            lint: 'eslint . --ext .js,.jsx --max-warnings=0'
+          }
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n')
+          NODE
+          yarn install --non-interactive
+      - run: node --test tests/*.test.mjs
+      - name: Audit production dependencies (block high/critical)
+        run: |
+          yarn audit --groups dependencies --json > audit.json || true
+          node <<'NODE'
+          const fs = require('fs')
+          const lines = fs.readFileSync('audit.json', 'utf8').trim().split('\n').filter(Boolean)
+          const entries = lines.map(line => JSON.parse(line))
+          const summary = entries.find(entry => entry.type === 'auditSummary')
+          if (!summary) throw new Error('Yarn audit did not produce an auditSummary')
+          const v = summary.data.vulnerabilities || {}
+          console.log(`production audit: low=${v.low || 0} moderate=${v.moderate || 0} high=${v.high || 0} critical=${v.critical || 0}`)
+          if ((v.high || 0) > 0 || (v.critical || 0) > 0) process.exit(1)
+          NODE
+      - run: yarn lint
+      - name: Build public web app without external CMS access
+        run: SANITY_OFFLINE_BUILD=true yarn build
+      - name: Commit verified dependency state
+        run: |
+          git config user.name 'Egor Denisov'
+          git config user.email 'designer.egor@ya.ru'
+          git add package.json yarn.lock
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'fix: upgrade miniblog public runtime security boundary'
+          git push origin HEAD:ai/product-completion/miniblog
